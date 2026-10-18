@@ -1,0 +1,129 @@
+openapi: 3.1.0
+info:
+  title: Inter-Link operations web API
+  version: 0.1.0
+  description: Same-origin Next.js API. Actual Supabase mode only; no remote service connected in this delivery. Domain RPC contracts are in API_CONTRACT.md and packages/shared/src/index.ts.
+servers:
+  - url: /
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: interlink-access
+      description: HttpOnly access cookie plus interlink-refresh. Server verifies user; administrative routes also require server role and AAL2.
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+    Mutation:
+      type: object
+      properties:
+        result:
+          type: object
+          required: [id]
+          properties:
+            id: { type: string, format: uuid }
+            status: { type: string }
+  responses:
+    Error:
+      description: Validation, unauthenticated, forbidden, rate limit, configuration or service error. No raw SQL or stack trace.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+paths:
+  /api/auth:
+    post:
+      summary: Request/verify existing-account email OTP, sign out, or manage TOTP MFA
+      description: Requires same Origin and application/json. MFA and signout require cookies. No new account is created through this web route. Successful authentication sets HttpOnly SameSite=Strict cookies.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [send, verify, signout, mfaEnroll, mfaChallenge, mfaVerify] }
+                email: { type: string, format: email, maxLength: 254 }
+                token: { type: string, pattern: '^[0-9]{6,10}$' }
+                factorId: { type: string }
+                challengeId: { type: string }
+                code: { type: string, pattern: '^[0-9]{6}$' }
+      responses:
+        '200':
+          description: OK, or enrolled factor/QR/secret, or MFA challenge. Enrollment secret must only be shown to the authenticated owner, never logged.
+        default: { $ref: '#/components/responses/Error' }
+  /api/session:
+    get:
+      summary: Verify session and query MFA/administrative readiness
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Session status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated: { type: boolean }
+                  admin: { type: boolean }
+                  mfa: { type: boolean }
+                  factors: { type: array, items: { type: object } }
+        default: { $ref: '#/components/responses/Error' }
+  /api/data:
+    post:
+      summary: Execute an allowlisted operations query or command
+      security: [{ session: [] }]
+      description: Same-origin JSON; requires verified session, DB admin role and AAL2. Query names admin.overview/reports/report/audit/jobs/communities; commands admin.action/community/invite/job.retry. All paginated queries accept optional cursor and limit (1-50) and return items plus nextCursor. Mobile-only teams.history and bootstrap.messageUnreadCount use direct Supabase domain RPC described in API_CONTRACT.md, not this admin route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, name, input]
+              properties:
+                type: { type: string, enum: [query, command] }
+                name: { type: string }
+                input: { type: object, description: Operation-specific shared domain input; server validates. }
+                idempotencyKey: { type: string, format: uuid, description: Required for commands. }
+      responses:
+        '200': { description: JSON result matching the selected QueryMap output or MutationResult. }
+        default: { $ref: '#/components/responses/Error' }
+  /api/account:
+    get:
+      summary: Read authenticated user's deletion status
+      security: [{ session: [] }]
+      description: After Auth deletion, a still-valid signed access token may query only the caller's account.status through PostgREST. Token expiry does not mean deletion completed; this narrow fallback grants no mutation/admin access.
+      responses:
+        '200': { description: result.status plus deletionRequestId and deletionStatus when requested. }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      summary: Request deletion of the authenticated user's account
+      security: [{ session: [] }]
+      description: Same-origin JSON, identity from verified session. Cannot select another user. Request accepted does not mean Auth/Storage deletion completed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmation, ownedTeams, idempotencyKey]
+              properties:
+                confirmation: { type: string, const: DELETE }
+                ownedTeams: { type: string, const: archive }
+                idempotencyKey: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Deletion request accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Mutation' }
+        default: { $ref: '#/components/responses/Error' }

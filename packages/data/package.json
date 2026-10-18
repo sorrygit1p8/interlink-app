@@ -1,0 +1,6 @@
+{
+  "name": "@interlink/data", "version": "0.1.0", "private": true, "type": "module",
+  "main": "./src/index.ts", "types": "./src/index.ts", "exports": { ".": "./src/index.ts", "./production": "./src/production.ts", "./supabase": "./src/supabase.ts" },
+  "scripts": { "typecheck": "tsc -p tsconfig.json --noEmit" },
+  "dependencies": { "@interlink/shared": "*", "@supabase/supabase-js": "2.118.0" }
+}

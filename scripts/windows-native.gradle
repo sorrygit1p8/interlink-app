@@ -1,0 +1,19 @@
+// Build-local Ninja selection for Windows paths that exceed legacy Ninja limits.
+// Usage: set INTERLINK_NINJA to ninja.exe, then pass -I scripts/windows-native.gradle.
+def ninjaPath = System.getenv('INTERLINK_NINJA') ?: gradle.startParameter.projectProperties['interlinkNinja']
+if (!ninjaPath) {
+    throw new GradleException('Set INTERLINK_NINJA or -PinterlinkNinja to an installed Ninja 1.12.1+ executable.')
+}
+def ninjaExecutable = new File(ninjaPath).absoluteFile
+if (!ninjaExecutable.isFile()) {
+    throw new GradleException("The configured Ninja executable does not exist: ${ninjaExecutable}")
+}
+def ninjaArgument = '-DCMAKE_MAKE_PROGRAM=' + ninjaExecutable.path.replace('\\', '/')
+
+gradle.beforeProject { project ->
+    ['com.android.application', 'com.android.library'].each { pluginId ->
+        project.pluginManager.withPlugin(pluginId) {
+            project.extensions.getByName('android').defaultConfig.externalNativeBuild.cmake.arguments.add(ninjaArgument)
+        }
+    }
+}

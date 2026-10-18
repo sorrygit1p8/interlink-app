@@ -1,0 +1,10 @@
+{
+  "imports": {
+    "imagescript": "npm:imagescript@3.2.1"
+  },
+  "compilerOptions": { "strict": true },
+  "tasks": {
+    "check": "deno check push-worker/index.ts deletion-worker/index.ts image-upload/index.ts",
+    "test": "deno test _shared/*.test.ts"
+  }
+}

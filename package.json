@@ -1,0 +1,42 @@
+{
+  "name": "interlink",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.3.0 <25"
+  },
+  "scripts": {
+    "dev:mobile": "npm run start --workspace @interlink/mobile",
+    "dev:web": "npm run dev --workspace @interlink/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint apps packages tests scripts",
+    "test": "vitest run",
+    "test:e2e": "playwright test -c tests/playwright.config.ts",
+    "build:mobile": "npm run export --workspace @interlink/mobile",
+    "build:web": "npm run build --workspace @interlink/web",
+    "build:android": "bash scripts/build-demo-apk.sh",
+    "assets:brand": "node scripts/generate-brand-assets.mjs",
+    "check:config": "tsx scripts/check-config.ts",
+    "check:production": "node scripts/check-production-bundle.mjs"
+  },
+  "overrides": {
+    "xcode": { "uuid": "11.1.1" }
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.1",
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "eslint": "10.13.0",
+    "sharp": "0.35.5",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.2",
+    "vitest": "5.0.5"
+  }
+}

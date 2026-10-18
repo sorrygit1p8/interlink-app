@@ -1,0 +1,59 @@
+name: Backend checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres-integration:
+    name: PostgreSQL 17 authorization and transaction tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.11'
+      # run.py starts a digest-pinned PostgreSQL 17 container and removes it in
+      # finally. Auth/Storage are isolated SQL fixtures; no remote keys are used.
+      - name: Execute isolated SQL, RLS and concurrency tests
+        run: python3 supabase/tests/run.py
+
+  edge-functions:
+    name: Deno worker and image validation checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: supabase/functions
+    env:
+      DENO_NO_UPDATE_CHECK: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.5.6
+      - name: Type check against the committed dependency lock
+        run: deno check --frozen push-worker/index.ts deletion-worker/index.ts image-upload/index.ts
+      - name: Lint
+        run: deno lint
+      - name: Check formatting
+        run: deno fmt --check
+      # These tests use injected repositories/transports and local raster data.
+      # No network/env permissions or hosted Supabase/Expo credentials are granted.
+      - name: Test push, deletion and raster processing
+        run: deno test --frozen _shared/*.test.ts
+      - name: Verify the dependency lock remains unchanged
+        run: git diff --exit-code -- deno.lock

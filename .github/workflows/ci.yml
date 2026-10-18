@@ -1,0 +1,39 @@
+name: Integration-ready checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      EXPO_PUBLIC_DATA_MODE: demo
+      EXPO_PUBLIC_APP_ENV: development
+      INTERLINK_DATA_MODE: demo
+      INTERLINK_APP_ENV: development
+      EXPO_NO_TELEMETRY: '1'
+      NEXT_TELEMETRY_DISABLED: '1'
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run check:config
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build:mobile
+      - run: python3 tests/backend-continuation-production-scan.py
+      - run: npm run check:production
+      - run: npm run build:web
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-demo-web-exports
+          path: apps/mobile/dist
