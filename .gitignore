@@ -28,3 +28,31 @@ artifacts/
 # This prevents a demo identifier/debug signing snapshot from becoming a production input.
 apps/mobile/android/
 apps/mobile/ios/
+
+# Local private keys and account credentials must not enter source control.
+*.pem
+*.key
+*.pfx
+*.p8
+.npmrc
+.netrc
+_netrc
+**/credentials.json
+**/service-account*.json
+**/service_account*.json
+**/local.properties
+
+# Local sessions, personal editor settings, and runtime data.
+.auth/
+playwright/.auth/
+.vscode/
+.idea/
+.history/
+*.log
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+
+# Ignore rules only protect untracked files; they do not erase Git history.
