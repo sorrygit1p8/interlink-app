@@ -1,0 +1,30 @@
+name: Publish verified Android APK
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/publish-apk.yml'
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download submitted APK and verify SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-delay 2 --output interlink-onboarding-final.apk             'https://github.com/sorrygit1p8/interlink-submission/releases/download/v0.1.5/interlink-onboarding-final.apk'
+          printf '%s  %s\n'             'd599e70b223e9ceadcf2dba7a68234e777e87786a86a9882006aab09b88c488c'             interlink-onboarding-final.apk | sha256sum --check --
+          test "$(stat -c%s interlink-onboarding-final.apk)" -eq 43940279
+      - name: Create GitHub Release and attach APK
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release create v0.1.5 interlink-onboarding-final.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --title 'Interlink 0.1.5 · Android demo APK' \
+            --notes 'First-run school level, nickname, and interest onboarding; redesigned navigation and looping home banner; team-leader disband and member leave flows. Local demo mode only. SHA-256: d599e70b223e9ceadcf2dba7a68234e777e87786a86a9882006aab09b88c488c. Android ARM64 APK (versionCode 6). No production backend, real-account messaging, or device installation verification.'
